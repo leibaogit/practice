@@ -215,6 +215,20 @@ And in `IPtable filter table FORWARD chain`, the default behavior is `DROP`, so 
 # iptables -t filter -A FORWARD -i eth1 -o veth0 -j ACCEPT
 # iptables -t filter -A FORWARD -o eth1 -i veth0 -j ACCEPT
 ```
+And we can show the rules we defined in the FORWARD chain of filter table:
+```
+# iptables -L -n -v
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain FORWARD (policy DROP 0 packets, 0 bytes)  <<<<< Default is DROP
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 ACCEPT     all  --  eth1   veth0   0.0.0.0/0            0.0.0.0/0  <<<<
+12977 1090K ACCEPT     all  --  veth0  eth1    0.0.0.0/0            0.0.0.0/0  <<<<
+
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+```
 
 Then let's capture the packets of `eth1`:
 ```
