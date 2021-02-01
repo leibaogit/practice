@@ -245,4 +245,59 @@ listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
 4 packets received by filter
 0 packets dropped by kernel
 ```
-Now we can see the packets out of the `eth1`.
+Now we can see the packets are out of the `eth1`. But the ping still not work, why? 
+
+When we look at the packets in the `eth1`, we can only see there are only packets out, but there is no packets in. That's because the source IP (10.1.1.1) is a private IP address, it's not reached by external network. So we need to set `SNAT`:
+
+```
+# iptables -t nat -A POSTROUTING -s 10.1.1.1/24 -o eth1 -j MASQUERADE
+
+# iptables -t nat -L -v
+...
+Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 MASQUERADE  all  --  any    eth1    10.1.1.0/24          anywhere
+...
+```
+
+Now we can ping again, and now it's working:
+```
+# ip netns exec netns1 ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=116 time=8.39 ms
+
+^C
+--- 8.8.8.8 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 12ms
+rtt min/avg/max/mdev = 8.101/8.209/8.387/0.090 ms
+```
+
+Now let's dump the packets on `eth1` with `host 10.1.1.1`:
+```
+# tcpdump -i eth1 -n host 10.1.1.1
+dropped privs to tcpdump
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
+^C
+0 packets captured
+0 packets received by filter
+0 packets dropped by kernel
+```
+We can not get any packets, that's because the source IP address is SNATed. 
+
+And let's use the capture the packets with ICMP protocol:
+
+```
+# tcpdump -i eth1 -p icmp -n
+dropped privs to tcpdump
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
+06:28:14.998918 IP 163.xx.xx.xx > 8.8.8.8: ICMP echo request, id 23883, seq 37, length 64
+06:28:15.006954 IP 8.8.8.8 > 163.xx.xx.xx: ICMP echo reply, id 23883, seq 37, length 64
+...
+^C
+10 packets captured
+10 packets received by filter
+0 packets dropped by kernel
+```
+We can see there are ICMP packets in and out the `eth1` port.
