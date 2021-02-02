@@ -247,8 +247,34 @@ listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
 ```
 Now we can see the packets are out of the `eth1`. But the ping still not work, why? 
 
-When we look at the packets in the `eth1`, we can only see there are only packets out, but there is no packets in. That's because the source IP (10.1.1.1) is a private IP address, it's not reached by external network. So we need to set `SNAT`:
+When we look at the packets in the `eth1`, we can only see there are only packets out, but there is no packets in. That's because the source IP (10.1.1.1) is a private IP address, it's not reached by external network. So we need to set `NAT` the NS IP address to a public IP address.
 
+## SNAT
+Let's use the `SNAT` to change change the IP address to the public IP address on `eth1`:
+```
+# iptables -t nat -A POSTROUTING -s 10.1.1.1 -j SNAT --to-source 163.68.xx.xx
+# iptables -t nat -L -n -v
+...
+Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 SNAT       all  --  *      *       10.1.1.1             0.0.0.0/0            to:163.68.xx.xx
+...
+```
+
+Check the ping result, it works:
+```
+# ip netns exec netns1 ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=116 time=8.39 ms
+
+^C
+--- 8.8.8.8 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 12ms
+rtt min/avg/max/mdev = 8.101/8.209/8.387/0.090 ms
+```
+
+## MASQUERADE
+Sometimes the public IP address on the `eth1` may be changed, so we don't want change the iptables rule, then we can use the `MASQUERADE` iptables rule, which can dynamically choose the final IP address on the interface routing out the packets:
 ```
 # iptables -t nat -A POSTROUTING -s 10.1.1.1/24 -o eth1 -j MASQUERADE
 
