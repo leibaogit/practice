@@ -1,2 +1,2 @@
-# practice
-Practice guidances on different aspects
+# Practice
+Practice guidances on different aspects: Cloud, Networking, Docker, K8s.... 
